@@ -35,6 +35,9 @@ Assuming the following tree
 You can define an executable android package as follows
 
 ```cmake
+list(APPEND CMAKE_MODULE_PATH <PATH_TO_SUBMODULE>/android-cmake)
+include(Android)
+
 add_library(NativeCode SHARED test.cpp)
 
 file(GLOB_RECURSE ANDROID_SOURCES "java/src/*")
