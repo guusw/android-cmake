@@ -106,19 +106,27 @@ function(add_android_package)
     file(RELATIVE_PATH REL_RES_PATH ${APK_RES_PATH} ${RES_FILE})
     get_filename_component(RES_NAME_WE ${RES_FILE} NAME_WE)
     get_filename_component(REL_RES_DIR ${REL_RES_PATH} DIRECTORY)
-    set(COMPILED_RES_PATH "res-compiled/${REL_RES_DIR}/${RES_NAME_WE}.flat")
-    set(COMPILED_RES_PATH1 "res-compiled/")
+    set(COMPILED_RES_DIR_PATH "res-compiled/")
+
+    string(REPLACE "/" "_" COMPILED_RES_NAME ${REL_RES_PATH})
+    get_filename_component(RES_EXT ${COMPILED_RES_NAME} LAST_EXT)
+    get_filename_component(COMPILED_RES_NAME ${COMPILED_RES_NAME} NAME_WLE)
+    if(RES_EXT MATCHES ".xml")
+      string(APPEND COMPILED_RES_NAME ".arsc.flat")
+    else()
+      string(APPEND COMPILED_RES_NAME ${RES_EXT} ".flat")
+    endif()
+
+    set(COMPILED_RES_PATH ${COMPILED_RES_DIR_PATH}/${COMPILED_RES_NAME})
+    list(APPEND COMPILED_RESOURCES ${COMPILED_RES_PATH})
 
     file(TO_NATIVE_PATH ${RES_FILE} IN_NATIVE_PATH)
-    file(TO_NATIVE_PATH ${COMPILED_RES_PATH} OUT_NATIVE_PATH)
-    file(TO_NATIVE_PATH ${COMPILED_RES_PATH1} OUT_NATIVE_PATH1)
-    list(APPEND COMPILED_RESOURCES ${OUT_NATIVE_PATH})
+    file(TO_NATIVE_PATH ${COMPILED_RES_DIR_PATH} OUT_NATIVE_PATH)
     add_custom_command(
       OUTPUT ${COMPILED_RES_PATH}
-      COMMAND ${ANDROID_AAPT2} compile -o "${OUT_NATIVE_PATH1}" "${IN_NATIVE_PATH}"
+      COMMAND ${ANDROID_AAPT2} compile -o "${OUT_NATIVE_PATH}" "${IN_NATIVE_PATH}"
       DEPENDS ${RES_FILE}
-      COMMENT "aapt2: compile ${RES_FILE}"
-      USES_TERMINAL
+      COMMENT "aapt2: compile ${RES_FILE} => ${COMPILED_RES_PATH}"
     )
   endforeach()
 
@@ -127,17 +135,8 @@ function(add_android_package)
     file(REAL_PATH ${APK_MANIFEST} APK_MANIFEST BASE_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
   endif()
 
-  # FIXME
-  set(RESOURCES
-    res-compiled/mipmap-hdpi_ic_launcher.png.flat
-    res-compiled/mipmap-mdpi_ic_launcher.png.flat
-    res-compiled/mipmap-xhdpi_ic_launcher.png.flat
-    res-compiled/mipmap-xxhdpi_ic_launcher.png.flat
-    res-compiled/mipmap-xxxhdpi_ic_launcher.png.flat
-    res-compiled/values_colors.arsc.flat
-    res-compiled/values_strings.arsc.flat
-    res-compiled/values_styles.arsc.flat)
-  foreach(RES ${RESOURCES})
+  # Fix resource paths
+  foreach(RES ${COMPILED_RESOURCES})
     file(REAL_PATH ${RES} RES_NATIVE BASE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     list(APPEND RESOURCES_NATIVE ${RES_NATIVE})
   endforeach()
@@ -168,6 +167,7 @@ function(add_android_package)
   foreach(LIB_TARGET ${APK_LIB_TARGETS})
     list(APPEND COPY_NATIVE_LIBS_COMMAND
       COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${LIB_TARGET}> ${NATIVE_LIB_PATH}
+      DEPENDS ${LIB_TARGET}
     )
   endforeach()
   add_custom_command(
