@@ -202,7 +202,7 @@ function(add_android_package)
     USES_TERMINAL
   )
 
-  add_custom_target(build-apk
+  add_custom_target(${APK_NAME}
     DEPENDS ${APK_PATH}
   )
 endfunction()
