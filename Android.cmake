@@ -109,8 +109,6 @@ function(add_android_package)
     set(COMPILED_RES_PATH "res-compiled/${REL_RES_DIR}/${RES_NAME_WE}.flat")
     set(COMPILED_RES_PATH1 "res-compiled/")
 
-    message(STATUS " Resource ${RES_FILE} => ${COMPILED_RES_PATH}")
-
     file(TO_NATIVE_PATH ${RES_FILE} IN_NATIVE_PATH)
     file(TO_NATIVE_PATH ${COMPILED_RES_PATH} OUT_NATIVE_PATH)
     file(TO_NATIVE_PATH ${COMPILED_RES_PATH1} OUT_NATIVE_PATH1)
