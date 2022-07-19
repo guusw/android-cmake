@@ -107,7 +107,7 @@ function(add_android_package)
 
   # Compile resources
   set(COMPILED_RES_DIR_PATH "res-compiled/")
-  file(MAKE_DIRECTORY ${COMPILED_RES_DIR_PATH})
+  file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${COMPILED_RES_DIR_PATH})
 
   file(GLOB_RECURSE RESOURCE_FILES "${APK_RES_PATH}/*")
   foreach(RES_FILE ${RESOURCE_FILES})
