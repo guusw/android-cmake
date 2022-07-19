@@ -5,6 +5,11 @@
 # ANDROID_TOOLS_VERSION: Version of the android build tools to use (e.g. "32.0.0")
 # JAVA_HOME:             Path to the JDK (e.g. "A:\\Java\\jdk-11)
 
+option(ANDROID_DEBUG "Debug mode")
+if(${ANDROID_DEBUG} OR CMAKE_BUILD_TYPE MATCHES "Debug")
+  set(_ANDROID_DEBUG ON)
+endif()
+
 if(NOT ANDROID)
   message(FATAL_ERROR "Android.cmake was included but you're not building for android")
 endif()
@@ -170,6 +175,15 @@ function(add_android_package)
       DEPENDS ${LIB_TARGET}
     )
   endforeach()
+
+  if(_ANDROID_DEBUG)
+    # Store binaries uncompressed for faster iteration times
+    set(ARCHIVE_CMDLINE ${SEVEN_ZIP} a -tzip -mm=copy ${APK_PATH} *)
+  else()
+    set(ARCHIVE_CMDLINE ${SEVEN_ZIP} a -tzip ${APK_PATH} *)
+  endif()
+
+
   add_custom_command(
     OUTPUT ${APK_PATH}
     DEPENDS ${RES_APK_PATH} ${CLASSES_DEX_PATH}/classes.dex
@@ -177,7 +191,7 @@ function(add_android_package)
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CLASSES_DEX_PATH}/classes.dex ./
     ${COPY_NATIVE_LIBS_COMMAND}
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${RES_APK_PATH} ${APK_PATH}
-    COMMAND ${SEVEN_ZIP} a -tzip ${APK_PATH} *
+    COMMAND ${ARCHIVE_CMDLINE}
     USES_TERMINAL
   )
 
