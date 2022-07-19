@@ -106,12 +106,14 @@ function(add_android_package)
   endif()
 
   # Compile resources
+  set(COMPILED_RES_DIR_PATH "res-compiled/")
+  file(MAKE_DIRECTORY ${COMPILED_RES_DIR_PATH})
+
   file(GLOB_RECURSE RESOURCE_FILES "${APK_RES_PATH}/*")
   foreach(RES_FILE ${RESOURCE_FILES})
     file(RELATIVE_PATH REL_RES_PATH ${APK_RES_PATH} ${RES_FILE})
     get_filename_component(RES_NAME_WE ${RES_FILE} NAME_WE)
     get_filename_component(REL_RES_DIR ${REL_RES_PATH} DIRECTORY)
-    set(COMPILED_RES_DIR_PATH "res-compiled/")
 
     string(REPLACE "/" "_" COMPILED_RES_NAME ${REL_RES_PATH})
     get_filename_component(RES_EXT ${COMPILED_RES_NAME} LAST_EXT)
@@ -122,7 +124,7 @@ function(add_android_package)
       set(COMPILED_RES_NAME "${COMPILED_RES_NAME_WLE}${RES_EXT}.flat")
     endif()
 
-    set(COMPILED_RES_PATH ${COMPILED_RES_DIR_PATH}/${COMPILED_RES_NAME})
+    set(COMPILED_RES_PATH ${COMPILED_RES_DIR_PATH}${COMPILED_RES_NAME})
     list(APPEND COMPILED_RESOURCES ${COMPILED_RES_PATH})
 
     file(TO_NATIVE_PATH ${RES_FILE} IN_NATIVE_PATH)
