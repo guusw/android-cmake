@@ -1,0 +1,23 @@
+#!/bin/bash
+# Run the script as ./attach
+
+SCRIPT_PATH=$(cd $(dirname "${BASH_SOURCE:-$0}") && pwd)
+source $SCRIPT_PATH/lib
+source $SCRIPT_PATH/jobs
+
+setup_child_job_cleanup
+
+set -e
+
+LLDB_PORT=$(cat $DATA_PATH/lldb_port)
+DEVICE_ID=$(cat $DATA_PATH/device_id)
+PID=$(cat $DATA_PATH/pid)
+
+# Launch vscode
+CODE_COMMAND="vscode://vadimcn.vscode-lldb/launch/config?{'request':'attach','pid':$PID, 'initCommands': ['platform select remote-android', 'platform connect connect://$DEVICE_ID:$LLDB_PORT', 'settings set target.inherit-env false']}"
+code --open-url "$CODE_COMMAND"
+echo "> Attached"
+
+$SCRIPT_PATH/logcat &
+LOGCAT_PID=$!
+wait $LOGCAT_PID

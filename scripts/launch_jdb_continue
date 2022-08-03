@@ -1,0 +1,7 @@
+#!/bin/bash
+SCRIPT_PATH=$(cd $(dirname "${BASH_SOURCE:-$0}") && pwd)
+source $SCRIPT_PATH/lib
+
+# Signal process to continue
+JDB_PORT=$(cat $DATA_PATH/jdb_port)
+echo "quit" | jdb -connect com.sun.jdi.SocketAttach:hostname=localhost,port=$JDB_PORT >/dev/null

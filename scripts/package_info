@@ -1,0 +1,9 @@
+#!/bin/bash
+
+SCRIPT_PATH=$(cd $(dirname "${BASH_SOURCE:-$0}") && pwd)
+source $SCRIPT_PATH/config
+
+PACKAGE_NAME=`$AAPT2 dump badging "$APK_PATH" | sed -n "s/package: name='\\([^']*\\)'.*/\\1/p"`
+echo "Package Name: ${PACKAGE_NAME}"
+ACTIVITY_NAME=`$AAPT2 dump badging "$APK_PATH" | sed -n "s/launchable-activity: name='${PACKAGE_NAME}.\\([^']*\\)'.*/\\1/p"`
+echo "Activity Name: ${ACTIVITY_NAME}"

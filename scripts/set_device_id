@@ -1,0 +1,7 @@
+#!/bin/bash
+DEVICE_ID=$1
+
+SCRIPT_PATH=$(cd $(dirname "${BASH_SOURCE:-$0}") && pwd)
+source $SCRIPT_PATH/lib
+
+echo $DEVICE_ID >$DATA_PATH/device_id

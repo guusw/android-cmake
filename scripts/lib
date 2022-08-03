@@ -1,0 +1,59 @@
+#!/bin/bash
+
+SCRIPT_PATH=$(cd $(dirname "${BASH_SOURCE:-$0}") && pwd)
+DATA_PATH="${SCRIPT_PATH}/.android_dbg"
+mkdir -p $DATA_PATH
+
+source ${SCRIPT_PATH}/package_info
+
+install_package() {
+    ${SCRIPT_PATH}/build || exit 1
+    adb install -f "${APK_PATH}"
+}
+
+uninstall_package() {
+    adb uninstall "${PACKAGE_NAME}"
+}
+
+kill_lldb_server() {
+    echo "> Killing previous lldb server"
+    adb shell run-as $PACKAGE_NAME killall lldb-server &
+}
+
+start_lldb_server() {
+    LLDB_PORT_SET=""
+    while [ -z "$LLDB_PORT_SET" ]
+    do
+        echo "> Try starting lldb server on port $LLDB_PORT"
+        adb shell run-as $PACKAGE_NAME "./lldb-server platform --listen \"*:$LLDB_PORT\" --server" &
+        LLDB_SERVER_PID=$!
+
+        # Wait to make sure it doesn't error during startup
+        sleep 0.4
+        if ps -p $LLDB_SERVER_PID >&-; then
+            LLDB_PORT_SET=$LLDB_PORT
+        else
+            LLDB_PORT=$(($LLDB_PORT+1))
+        fi
+    done
+    export LLDB_PORT=$LLDB_PORT_SET
+}
+
+launch_package() {
+    INTENT="$PACKAGE_NAME/$PACKAGE_NAME.$ACTIVITY_NAME"
+    echo "> Launching $INTENT"
+    adb shell am force-stop "$PACKAGE_NAME"
+    adb shell am start $@ -n "$INTENT" &
+}
+
+wait_for_process() {
+    echo "> Waiting for process..."
+    while [ -z "$PID" ]
+    do
+        PID=$(adb shell ps -A | grep "$PACKAGE_NAME" | sed -E -n 's/\w+\s+([0-9]+)\s+.*/\1/p')
+        echo "..."
+    done
+    export PID=$PID
+    echo "> Launched $PACKAGE_NAME with PID $PID"
+    echo $PID >$DATA_PATH/pid
+}

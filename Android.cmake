@@ -68,6 +68,29 @@ function(ensure_debug_keystore)
 endfunction()
 ensure_debug_keystore()
 
+set(ANDROID_SCRIPT_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/scripts")
+function(configure_android_debug_scripts APK_PATH TARGET_NAME)
+  message(STATUS "configure_android_debug_scripts(${APK_PATH})")
+  get_filename_component(APK_DIR "${APK_PATH}" DIRECTORY)
+  get_filename_component(APK_NAME "${APK_PATH}" NAME_WLE)
+  message(STATUS "  APK_DIR=${APK_DIR}")
+  message(STATUS "  APK_NAME=${APK_NAME}")
+
+  set(SRC "${ANDROID_SCRIPT_SRC_DIR}")
+  set(DST "${APK_DIR}/${APK_NAME}_")
+
+  file(MAKE_DIRECTORY "${DST}")
+  file(GLOB SCRIPT_FILES "${SRC}/*")
+  file(COPY ${SCRIPT_FILES} DESTINATION "${DST}")
+  file(WRITE "${DST}/build" "#!/bin/bash\nset -e\n\"${CMAKE_COMMAND}\" --build \"${CMAKE_BINARY_DIR}\" --target ${TARGET_NAME}\n")
+  file(WRITE "${DST}/config" "#!/bin/bash\n"
+    "CMAKE=\"${CMAKE_COMMAND}\""
+    "CMAKE_BINARY_DIR=\"${CMAKE_BINARY_DIR}\"\n"
+    "APK_PATH=\"${APK_PATH}\"\n"
+    "AAPT2=\"${ANDROID_AAPT2}\"\n"
+  )
+endfunction()
+
 function(add_android_package)
   set(OPTS)
   set(ARGS
@@ -84,7 +107,7 @@ function(add_android_package)
 
   set(JAR_NAME "${APK_NAME}_javasrc")
 
-  message(STATUS " Java source files: ${APK_SOURCES}")
+  message(STATUS "  Java source files: ${APK_SOURCES}")
   add_jar(${JAR_NAME}
     SOURCES ${APK_SOURCES}
     INCLUDE_JARS ${ANDROID_PLATFORM_PATH}/android.jar
@@ -207,8 +230,19 @@ function(add_android_package)
     USES_TERMINAL
   )
 
+  # Final APK path
+  set(BUILD_TYPE_UPPER ${CMAKE_BUILD_TYPE})
+  string(TOUPPER "${BUILD_TYPE_UPPER}" BUILD_TYPE_UPPER)
+  if(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${BUILD_TYPE_UPPER})
+    set(APK_OUT_DIR ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_${BUILD_TYPE_UPPER}})
+  elseif(CMAKE_RUNTIME_OUTPUT_DIRECTORY)
+    set(APK_OUT_DIR ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+  else()
+    set(APK_OUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
+  endif()
+  set(APK_PATH ${APK_OUT_DIR}/${APK_NAME}.apk)
+
   # apksigner
-  set(APK_PATH ${CMAKE_CURRENT_BINARY_DIR}/${APK_NAME}.apk)
   add_custom_command(
     OUTPUT ${APK_PATH}
     DEPENDS ${ALIGNED_APK_PATH}
@@ -219,4 +253,6 @@ function(add_android_package)
   add_custom_target(${APK_NAME}
     DEPENDS ${APK_PATH}
   )
+
+  configure_android_debug_scripts("${APK_PATH}" "${APK_NAME}")
 endfunction()

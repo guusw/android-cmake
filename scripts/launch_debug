@@ -1,0 +1,29 @@
+#!/bin/bash
+LLDB_PORT=10000
+JDB_PORT=9999
+
+SCRIPT_PATH=$(cd $(dirname "${BASH_SOURCE:-$0}") && pwd)
+source $SCRIPT_PATH/lib
+
+DEVICE_ID=$(cat $DATA_PATH/device_id)
+
+# Launch package in debug mode
+install_package
+launch_package -D
+
+echo "> Copying lldb-server"
+adb shell "run-as $PACKAGE_NAME cp -f /data/local/tmp/lldb-server /data/user/0/$PACKAGE_NAME; run-as $PACKAGE_NAME chmod +x /data/user/0/$PACKAGE_NAME/lldb-server"
+
+# Start lldb server
+start_lldb_server
+
+wait_for_process
+
+# Forward
+adb forward tcp:$LLDB_PORT tcp:$LLDB_PORT
+adb forward tcp:$JDB_PORT jdwp:$PID
+
+mkdir -p $DATA_PATH
+echo $JDB_PORT >$DATA_PATH/jdb_port
+echo $LLDB_PORT >$DATA_PATH/lldb_port
+

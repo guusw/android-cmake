@@ -1,0 +1,17 @@
+#!/bin/bash
+SCRIPT_PATH=$(cd $(dirname "${BASH_SOURCE:-$0}") && pwd)
+source $SCRIPT_PATH/lib
+source $SCRIPT_PATH/jobs
+
+setup_child_job_cleanup
+
+set -e
+
+install_package
+launch_package
+wait_for_process
+
+$SCRIPT_PATH/logcat &
+LOGCAT_PID=$!
+
+wait $LOGCAT_PID
