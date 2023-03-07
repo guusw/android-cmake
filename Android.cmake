@@ -24,6 +24,8 @@ endmacro()
 find_package(Java REQUIRED)
 include(UseJava)
 
+message(STATUS "Using java: ${Java_JAVA_EXECUTABLE}")
+
 option(ANDROID_SDK_ROOT "Path to the android SDK root folder")
 android_sdk_from_env("ANDROID_HOME")
 android_sdk_from_env("ANDROID_SDK_ROOT")
@@ -247,6 +249,7 @@ function(add_android_package)
     OUTPUT ${APK_PATH}
     DEPENDS ${ALIGNED_APK_PATH}
     COMMAND ${Java_JAVA_EXECUTABLE} -jar ${ANDROID_APKSIGNER_JAR} sign --ks ${DEBUG_KEYSTORE_PATH} --ks-pass pass:${DEBUG_KEYSTORE_PASS} --out ${APK_PATH} ${ALIGNED_APK_PATH}
+    COMMENT "${Java_JAVA_EXECUTABLE} -jar ${ANDROID_APKSIGNER_JAR} sign --ks ${DEBUG_KEYSTORE_PATH} --ks-pass pass:${DEBUG_KEYSTORE_PASS} --out ${APK_PATH} ${ALIGNED_APK_PATH}"
     USES_TERMINAL
   )
 
