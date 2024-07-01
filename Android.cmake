@@ -18,6 +18,8 @@ option(ANDROID_DEBUG "Debug mode")
 
 if(${ANDROID_DEBUG} OR CMAKE_BUILD_TYPE MATCHES "Debug")
   set(_ANDROID_DEBUG ON)
+else()
+  set(ANDROID_STRIP_DEBUG_SYMBOLS ON)
 endif()
 
 if(NOT ANDROID)
@@ -33,6 +35,8 @@ endmacro()
 
 find_package(Java REQUIRED)
 include(UseJava)
+
+set(CMAKE_JAVA_COMPILE_FLAGS -encoding UTF8)
 
 message(STATUS "Using java: ${Java_JAVA_EXECUTABLE}")
 
@@ -72,18 +76,33 @@ find_program(SEVEN_ZIP NAMES "7z" PATHS ${SEVEN_ZIP_PATH} REQUIRED)
 file(REAL_PATH "${Java_JAVA_EXECUTABLE}/.." JDK_PATH)
 find_program(Java_KEYTOOL NAMES "keytool" PATHS ${JDK_PATH} REQUIRED NO_DEFAULT_PATH NO_SYSTEM_ENVIRONMENT_PATH NO_CMAKE_FIND_ROOT_PATH)
 
-set(DEBUG_KEYSTORE_PATH ${CMAKE_BINARY_DIR}/debug.keystore)
-set(DEBUG_KEYSTORE_KEY androiddebugkey)
-set(DEBUG_KEYSTORE_PASS android)
+set(ANDROID_KEYSTORE_PATH "" CACHE STRING "")
+set(ANDROID_KEYSTORE_KEY_ALIAS "" CACHE STRING "")
+set(ANDROID_KEYSTORE_PASS "" CACHE STRING "")
 
-function(ensure_debug_keystore)
-  if(NOT EXISTS ${DEBUG_KEYSTORE_PATH})
-    message(STATUS "Generating android debug keystore")
-    execute_process(COMMAND ${Java_KEYTOOL} -genkey -v -dname "CN=debug" -keystore ${DEBUG_KEYSTORE_PATH} -storepass ${DEBUG_KEYSTORE_PASS} -keypass ${DEBUG_KEYSTORE_PASS} -alias ${DEBUG_KEYSTORE_KEY} -keyalg RSA -keysize 2048 -validity 10000)
-  endif()
-endfunction()
+if(ANDROID_KEYSTORE_PATH STREQUAL "")
+  message(WARNING "ANDROID_KEYSTORE_PATH not set, using debug key")
+  set(_DEBUG_KEYSTORE_PATH ${CMAKE_BINARY_DIR}/debug.keystore)
+  set(_DEBUG_KEYSTORE_KEY androiddebugkey)
+  set(_DEBUG_KEYSTORE_PASS android)
 
-ensure_debug_keystore()
+  function(ensure_debug_keystore)
+    if(NOT EXISTS ${_DEBUG_KEYSTORE_PATH})
+      message(STATUS "Generating android debug keystore")
+      execute_process(COMMAND ${Java_KEYTOOL} -genkey -v -dname "CN=debug" -keystore ${_DEBUG_KEYSTORE_PATH} -storepass ${_DEBUG_KEYSTORE_PASS} -keypass ${_DEBUG_KEYSTORE_PASS} -alias ${_DEBUG_KEYSTORE_KEY} -keyalg RSA -keysize 2048 -validity 10000)
+    endif()
+  endfunction()
+
+  ensure_debug_keystore()
+  
+  set(_ANDROID_KEYSTORE_PATH ${_DEBUG_KEYSTORE_PATH})
+  set(_ANDROID_KEYSTORE_KEY_ALIAS ${_DEBUG_KEYSTORE_KEY})
+  set(_ANDROID_KEYSTORE_PASS ${_DEBUG_KEYSTORE_PASS})
+else()
+  set(_ANDROID_KEYSTORE_PATH ${ANDROID_KEYSTORE_PATH})
+  set(_ANDROID_KEYSTORE_KEY_ALIAS ${ANDROID_KEYSTORE_KEY_ALIAS})
+  set(_ANDROID_KEYSTORE_PASS ${ANDROID_KEYSTORE_PASS})
+endif()
 
 set(ANDROID_SCRIPT_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/scripts")
 
@@ -224,10 +243,17 @@ function(add_android_package)
   set(APK_PATH ${CMAKE_CURRENT_BINARY_DIR}/${APK_NAME}.unaligned.apk)
 
   foreach(LIB_TARGET ${APK_LIB_TARGETS})
-    list(APPEND COPY_NATIVE_LIBS_COMMAND
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${LIB_TARGET}> ${NATIVE_LIB_PATH}
-      DEPENDS ${LIB_TARGET}
-    )
+    if(ANDROID_STRIP_DEBUG_SYMBOLS)
+      list(APPEND COPY_NATIVE_LIBS_COMMAND
+        COMMAND ${ANDROID_STRIP} --strip-debug -o "${NATIVE_LIB_PATH}/$<TARGET_FILE_NAME:${LIB_TARGET}>" $<TARGET_FILE:${LIB_TARGET}>
+        DEPENDS ${LIB_TARGET}
+      )
+    else()
+      list(APPEND COPY_NATIVE_LIBS_COMMAND
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${LIB_TARGET}> ${NATIVE_LIB_PATH}
+        DEPENDS ${LIB_TARGET}
+      )
+    endif()
   endforeach()
 
   if(_ANDROID_DEBUG)
@@ -276,8 +302,8 @@ function(add_android_package)
   add_custom_command(
     OUTPUT ${APK_PATH}
     DEPENDS ${ALIGNED_APK_PATH}
-    COMMAND ${Java_JAVA_EXECUTABLE} -jar ${ANDROID_APKSIGNER_JAR} sign --ks ${DEBUG_KEYSTORE_PATH} --ks-pass pass:${DEBUG_KEYSTORE_PASS} --out ${APK_PATH} ${ALIGNED_APK_PATH}
-    COMMENT "${Java_JAVA_EXECUTABLE} -jar ${ANDROID_APKSIGNER_JAR} sign --ks ${DEBUG_KEYSTORE_PATH} --ks-pass pass:${DEBUG_KEYSTORE_PASS} --out ${APK_PATH} ${ALIGNED_APK_PATH}"
+    COMMAND ${Java_JAVA_EXECUTABLE} -jar ${ANDROID_APKSIGNER_JAR} sign --ks ${_ANDROID_KEYSTORE_PATH} --ks-key-alias ${_ANDROID_KEYSTORE_KEY_ALIAS} --ks-pass pass:${_ANDROID_KEYSTORE_PASS} --out ${APK_PATH} ${ALIGNED_APK_PATH}
+    COMMENT "${Java_JAVA_EXECUTABLE} -jar ${ANDROID_APKSIGNER_JAR} sign --ks ${_ANDROID_KEYSTORE_PATH} --ks-key-alias ${_ANDROID_KEYSTORE_KEY_ALIAS} --ks-pass pass:<key> --out ${APK_PATH} ${ALIGNED_APK_PATH}"
     USES_TERMINAL
   )
 
